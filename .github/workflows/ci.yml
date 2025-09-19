@@ -1,4 +1,4 @@
-name: CI (frontend)
+name: CI + CD (frontend)
 
 on:
   push:
@@ -6,32 +6,30 @@ on:
   pull_request:
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: package-lock.json
+          node-version: 20
+          cache: npm
 
-      - run: npm ci
-
-      # Crée la conf prod pour pointer vers tes Functions
       - name: Create .env.production
         run: |
           echo "VITE_FUNCTIONS_BASE=https://bayroumeter-function-louan.azurewebsites.net" > .env.production
           echo "VITE_FUNCTION_CODE=" >> .env.production
 
+      - run: npm ci
       - run: npm run build
 
-      # (Optionnel) Publier l’artefact pour consultation
-      - uses: actions/upload-artifact@v4
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
         with:
-          name: dist
-          path: dist
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: "/" # racine du repo
+          output_location: "dist" # on vient de le générer
+          skip_app_build: true # <<< IMPORTANT : pas d’Oryx build
+          skip_api_build: true
